@@ -30,6 +30,7 @@ def handleArgs():
     parser.add_argument("-m", "--modules", nargs="+", default=supported_modules, type=str.lower, choices=supported_modules, help="the names of the modules to run. defaults to all of them", dest="modules")
     parser.add_argument("-b", "--benchmark", default=os.getcwd()+"/binary_networks/", help="the path to the installed LFR generation software, required for functionality of the generate module. Defaults to the current working directory + '/binary_networks/'", dest="bench_directory_stem")
     parser.add_argument("--lp", default=os.getcwd()+"/clustering_programs_5_2/", help="the path at which the Lancichinetti clustering program is installed, required for full functionality of the measure module. Defaults to the current working directory + '/clustering_programs_5_2/'", dest="lancichinetti_program_path")
+    parser.add_argument("--Xmx", default="64m", help="A value for the Xmx Java parameter, to be passed to the call to the slm clustering algorithm. For example, if '600m' is given, the flag '-Xmx600m' will be passed to the java call to run the slm clustering algorithm. Defaults to '64m'", dest="xmx")
 
     global args
     args = parser.parse_args()
@@ -168,6 +169,8 @@ for n in args.n_list:
         command_list.append(str(args.end))
         command_list.append('--lp')
         command_list.append(new_lancichinetti_program_path)
+        command_list.append('--Xmx')
+        command_list.append(args.xmx)
         command_list.append('-o')
         command_list.append(working_directory)
 
