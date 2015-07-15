@@ -49,13 +49,16 @@ def handleArgs():
     parser.add_argument("--gsuf", required=True, help="the ending to the filename of the graph files, after the file number, including the file extension", dest="graph_file_suffix")
     parser.add_argument("-s", "--start", default=1, type=int, help="the file number with which to start, defaults to 1", dest="file_range_start")
     parser.add_argument("-e", "--end", type=int, required=True, help="the file number with which to end, inclusive", dest="file_range_end")
-    parser.add_argument("--lp", default=os.getcwd(), help="the path at which the Lancichinetti clustering program is installed, required if running the 'oslom', 'infomap', 'hierarchical_infomap', 'louvain', 'label_propagation', or 'modularity_optimization' methods. Defaults to the current working directory", dest="lancichinetti_program_path")
+    parser.add_argument("--lp", default=os.getcwd() + '/clustering_programs_5_2/', help="the path at which the Lancichinetti clustering program is installed, required if running the 'oslom', 'infomap', 'hierarchical_infomap', 'louvain', 'label_propagation', or 'modularity_optimization' methods. Defaults to the current working directory + '/clustering_programs_5_2/'", dest="lancichinetti_program_path")
     parser.add_argument("--modopt", default=os.getcwd(), help="the path at which Ludo Waltman and Nees Jan van Eck's Modularity Optimizer is installed, required if running the 'slm' method. Defaults to the current working directory", dest="modularity_optimizer_path")
+    parser.add_argument("--Xmx", default="64m", help="A value for the Xmx Java parameter, to be passed to the call to the slm clustering algorithm. For example, if '600m' is given, the flag '-Xmx600m' will be passed to the java call to run the slm clustering algorithm. Defaults to '64m'", dest="xmx")
     parser.add_argument("--demon", default=os.getcwd() + '/demon_py', help="the path at which DEMON clustering, implemented by Giulio Rossetti, is installed, required if running the 'demon' method. Defaults to a folder called 'demon_py' in the current directory", dest="demon_path")
     parser.add_argument("-o", "--out", default="clustering_results/", help="the path to which to write the program output files, defaults to 'clustering_results/'", dest="out_directory_stem")
     
     global args
     args = parser.parse_args()
+
+    args.xmx = '-Xmx' + args.xmx
 
 def createPathIfNeeded(path):
     """Credits to user 'Heikki Toivonen' on SO: http://stackoverflow.com/questions/273192/check-if-a-directory-exists-and-create-it-if-necessary"""
@@ -197,7 +200,7 @@ def clusterByLancichinetti(n, p, f, c, program_path):
 def clusterByLeiden(input_file, output_file, random_seed, modularity_function = 1, resolution_parameter = 1.0, optimization_algorithm = 3, n_random_starts = 10, n_iterations = 10, print_output = 0):
     
     deleteFileIfNeeded(args.modularity_optimizer_path + '/' + output_file)
-    process = subprocess.Popen(['time', 'java', '-jar', 'ModularityOptimizer.jar', input_file, output_file, str(modularity_function), str(resolution_parameter), str(optimization_algorithm), str(n_random_starts), str(n_iterations), str(random_seed), str(print_output)], cwd=args.modularity_optimizer_path, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    process = subprocess.Popen(['time', 'java', args.xmx, '-jar', 'ModularityOptimizer.jar', input_file, output_file, str(modularity_function), str(resolution_parameter), str(optimization_algorithm), str(n_random_starts), str(n_iterations), str(random_seed), str(print_output)], cwd=args.modularity_optimizer_path, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     out, err = process.communicate()
 
     times = timing_values_from_err(err)
