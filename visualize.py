@@ -1,11 +1,13 @@
 ## Author: Scott Emmons
 ## Purpose: To visualize results of the clustering analysis workflow.
-## Date: February 17, 2014
+## Date: February 17, 2015
 
 import argparse
 import os
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 ####################
@@ -66,6 +68,25 @@ def compileData(file_paths, destination_path, headers = True):
         status_message = status_message + ' ' + path + ','
     print status_message[:-1]
     
+
+def formatName(name):
+    """"""
+
+    if name == 'blondel':
+	return 'Louvain'
+    elif name == 'infomap':
+	return 'Infomap'
+    elif name == 'label_propagation':
+	return 'Label Propagation'
+    elif name == 'slm':
+	return 'Smart Local Moving'
+    elif name == 'Scikit-learn NMI':
+	return 'Traditional NMI'
+    elif name == 'Lancichinetti NMI':
+	return 'Variant of NMI'
+    
+    return name
+
 def runIndividualVisualization(file_path, file_name):
     """
     Visualize the individual metrics in file_path, using file_name to name the output.
@@ -124,24 +145,32 @@ def runCombinedVisualization(combined_data, write_subdirectory = ''):
         algorithm_frame = df[df['name'] == algorithm][['n', 'metric', 'value']]
         
         # Create dictionary to pass to dataframe constructor for visualization
-        d = {}
+	mean_map = {}
+	error_map = {}
 
         for metric in algorithm_frame['metric'].unique():
-            series = pd.Series()
+            means = pd.Series()
+            errors = pd.Series()
             metric_match = algorithm_frame['metric'] == metric
+            means = means.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+            errors = errors.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
             for n in algorithm_frame['n'].unique():
                 n_match = algorithm_frame['n'] == n
                 dat = algorithm_frame[metric_match & n_match]['value']
-                series = series.append(pd.Series([dat.mean()], index=[n]))
-            d[metric] = series
+                means = means.append(pd.Series([dat.mean()], index=[n]))
+                errors = errors.append(pd.Series([dat.std()], index=[n]))
+            mean_map[metric] = means
+            error_map[metric] = errors
         
-        # Create and visualize the dataframe
-        vis_frame = pd.DataFrame(d)
+        # Create dataframes of relevant information
+        mean_frame = pd.DataFrame(mean_map)
+        error_frame = pd.DataFrame(error_map)
 
-        linegraph = vis_frame.plot(marker='^')
+	# Create line graph with standard deviations
+        linegraph = mean_frame.plot(marker='^', yerr=error_frame)
         linegraph.set_title(algorithm + ' Clustering Metric Values')
         linegraph.set_xscale('log')
-        linegraph.set_xlim(linegraph.get_xlim()[0] * 0.90, linegraph.get_xlim()[1] * 1.1)
+        linegraph.set_xlim(sorted(mean_frame.index.values)[1] * 0.90, linegraph.get_xlim()[1] * 1.1) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
         linegraph.set_ylim(linegraph.get_ylim()[1] * -0.10, linegraph.get_ylim()[1] * 1.1)
         figure = linegraph.get_figure()
         figure.tight_layout()
@@ -153,26 +182,34 @@ def runCombinedVisualization(combined_data, write_subdirectory = ''):
     metrics = df['metric'].unique()
     for metric in metrics:
         metric_frame = df[df['metric'] == metric][['n', 'name', 'value']]
-        
+
         # Create dictionary to pass to dataframe constructor for visualization
-        d = {}
+        mean_map = {}
+	error_map = {}
 
         for algorithm in metric_frame['name'].unique():
-            series = pd.Series()
+            means = pd.Series()
+            errors = pd.Series()
             algorithm_match = metric_frame['name'] == algorithm
+            means = means.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+            errors = errors.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
             for n in metric_frame['n'].unique():
                 n_match = metric_frame['n'] == n
                 dat = metric_frame[algorithm_match & n_match]['value']
-                series = series.append(pd.Series([dat.mean()], index=[n]))
-            d[algorithm] = series
+                means = means.append(pd.Series([dat.mean()], index=[n]))
+                errors = errors.append(pd.Series([dat.std()], index=[n]))
+            mean_map[algorithm] = means
+            error_map[algorithm] = errors
         
-        # Create and visualize the dataframe
-        vis_frame = pd.DataFrame(d)
+        # Create dataframes of relevant information
+        mean_frame = pd.DataFrame(mean_map)
+        error_frame = pd.DataFrame(error_map)
 
-        linegraph = vis_frame.plot(marker='^')
+	# Create line graph with standard deviations
+        linegraph = mean_frame.plot(marker='^', yerr=error_frame)
         linegraph.set_title(metric + ' Performance by Algorithm')
         linegraph.set_xscale('log')
-        linegraph.set_xlim(linegraph.get_xlim()[0] * 0.90, linegraph.get_xlim()[1] * 1.1)
+        linegraph.set_xlim(sorted(mean_frame.index.values)[1] * 0.90, linegraph.get_xlim()[1] * 1.1) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
         linegraph.set_ylim(-0.1, 1.1)
         figure = linegraph.get_figure()
         figure.tight_layout()
@@ -180,7 +217,112 @@ def runCombinedVisualization(combined_data, write_subdirectory = ''):
         figure.savefig(out_directory + write_subdirectory + '/' + metric.lower().replace(' ', '_') + '_linegraph' + '.pdf')
         plt.close()
 
+    # Create algorithm by metric subplot matrix
+    algorithms = [algorithm for algorithm in algorithms if algorithm != 'gold_standard'] 
+    fig, axes = plt.subplots(len(algorithms), len(metrics), sharex='col', sharey='row')
+    fig.suptitle(r"LFR Benchmark Results")# at $\mu$ = 0.40")
+    for i in range(len(algorithms)):
+	for j in range(len(metrics)):
+	    paired_frame = df[(df['name'] == algorithms[i]) & (df['metric'] == metrics[j])][['n', 'value']]
+	    dataset = [paired_frame[paired_frame['n'] == n][['value']].values for n in df['n'].unique()]
+	    axes[i, j].violinplot(dataset, showmeans=True, showextrema=True)
+	    axes[i, j].set_ylim(-0.1, 1.1)
+	    for tick in axes[i, j].get_xticklabels():
+	        tick.set_rotation(90)
+		tick.set_fontsize(8)
+	    if (i == 0):
+		axes[i, j].set_title(formatName(metrics[j]), fontsize=7)
+	    if (j == 0):
+		axes[i, j].set_ylabel(formatName(algorithms[i]), rotation=90, fontsize=9)
+    plt.setp(axes, xticks=[x + 1 for x in range(df['n'].unique().size)], xticklabels=df['n'].unique().tolist())
+    makeDirIfNeeded(out_directory + write_subdirectory)
+    fig.savefig(out_directory + write_subdirectory + '/' + 'violinplot_matrix' + '.pdf')
+    plt.close()
+
     print('\nSuccessfully ran combined visualization on data file ' + combined_data)
+
+def runSummaryVisualization(combined_data, write_subdirectory=''):
+    """"""
+
+    # Create a data frame of the data stored in the file
+    df = pd.read_csv(combined_data)
+    df = df[df['name'] != 'gold_standard']
+
+    # Visualize performance of algorithms averaged over choice of metric
+    algorithm_frame = df[['n', 'name', 'value']]
+
+    # Create dictionary to pass to dataframe constructor for visualization
+    mean_map = {}
+    error_map = {}
+    
+    for algorithm in algorithm_frame['name'].unique():
+        means = pd.Series()
+        errors = pd.Series()
+        algorithm_match = algorithm_frame['name'] == algorithm
+        means = means.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+        errors = errors.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+        for n in algorithm_frame['n'].unique():
+            n_match = algorithm_frame['n'] == n
+            dat = algorithm_frame[algorithm_match & n_match]['value']
+            means = means.append(pd.Series([dat.mean()], index=[n]))
+            errors = errors.append(pd.Series([dat.std()], index=[n]))
+        mean_map[algorithm] = means
+        error_map[algorithm] = errors
+
+    # Create dataframes of relevant information
+    mean_frame = pd.DataFrame(mean_map)
+    error_frame = pd.DataFrame(error_map)
+
+    # Create line graph with standard deviations
+    linegraph = mean_frame.plot(marker='^', yerr=error_frame)
+    linegraph.set_title('Algorithm Performance Averaged Over All Metrics')
+    linegraph.set_xscale('log')
+    linegraph.set_xlim(sorted(mean_frame.index.values)[1] * 0.90, linegraph.get_xlim()[1] * 1.1) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+    linegraph.set_ylim(-0.1, 1.1)
+    figure = linegraph.get_figure()
+    figure.tight_layout()
+    makeDirIfNeeded(out_directory + write_subdirectory)
+    figure.savefig(out_directory + write_subdirectory + '/' + 'algorithm_linegraph' + '.pdf')
+    plt.close()
+
+    # Visualize performance by metrics average over choice of algorithm
+    metric_frame = df[['n', 'metric', 'value']]
+
+    # Create dictionary to pass to dataframe constructor for visualization
+    mean_map = {}
+    error_map = {}
+
+    for metric in metric_frame['metric'].unique():
+        means = pd.Series()
+        errors = pd.Series()
+        metric_match = metric_frame['metric'] == metric
+        means = means.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+        errors = errors.append(pd.Series([0], index=[0])) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+        for n in metric_frame['n'].unique():
+            n_match = metric_frame['n'] == n
+            dat = metric_frame[metric_match & n_match]['value']
+            means = means.append(pd.Series([dat.mean()], index=[n]))
+            errors = errors.append(pd.Series([dat.std()], index=[n]))
+        mean_map[metric] = means
+        error_map[metric] = errors
+
+    # Create dataframes of relevant information
+    mean_frame = pd.DataFrame(mean_map)
+    error_frame = pd.DataFrame(error_map)
+
+    # Create line graph with standard deviations
+    linegraph = mean_frame.plot(marker='^', yerr=error_frame)
+    linegraph.set_title('Metric Performance Averaged Over All Algorithms')
+    linegraph.set_xscale('log')
+    linegraph.set_xlim(sorted(mean_frame.index.values)[1] * 0.90, linegraph.get_xlim()[1] * 1.1) #Dirty solution to side step bug https://github.com/pydata/pandas/issues/11858
+    linegraph.set_ylim(-0.1, 1.1)
+    figure = linegraph.get_figure()
+    figure.tight_layout()
+    makeDirIfNeeded(out_directory + write_subdirectory)
+    figure.savefig(out_directory + write_subdirectory + '/' + 'metric_linegraph' + '.pdf')
+    plt.close()
+
+    print('\nSuccessfully ran summary visualization on data file ' + combined_data)
 
 if __name__ == "__main__":
 
@@ -200,3 +342,6 @@ if __name__ == "__main__":
 
     # Visualize combined data to show how algorithms scale with n
     runCombinedVisualization(compiled_data, write_subdirectory = 'combined')
+
+    # Visualize summary graphs to picture overall trends
+    runSummaryVisualization(compiled_data, write_subdirectory = 'summary')
