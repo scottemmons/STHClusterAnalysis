@@ -3,18 +3,21 @@ Installation
 
 The brunt of installation work requires installing the package's dependencies (listed below). The package includes copies of all the dependencies that are not Python modules. All the dependencies besides the ModularityOptimizer and DEMON will need installation. Unzip all of the zip files, navigate to each resulting directory, and see the README's in each directory for installation instructions.
 
+One additional step must be taken to configure the "binary_networks/" program. You must manually run the program once for it to produce the files necessary to be automatically run by this package's .py scripts. See the example installation workflow provided below for details.
+
 Example Installation Workflow
 =============================
 
 1. Unzip binary_networks.tar.gz
 2. Execute the terminal command `make` inside the binary_networks directory
-3. Unzip clustering_programs.tar.gz
-4. Execute the terminal command `./compile.sh` inside the clustering_programs_5_2 directory. Note that this will work from a Unix terminal, and that to run the program on Windows you can install MinGW from http://www.mingw.org/ (I haven't tried to install the program on Windows)
-5. Unzip mutual3.tar.gz
-6. Execute the terminal command `make` inside the mutual3 directory
-7. Unzip gmap.zip
-8. Execute the terminal command `make` inside the gmap/external/eba directory. Note that only this subset of the entire gmap program needs to be installed.
-9. Additionally, you can test whether or not ModularityOptimizer.jar works with your installed version of Java by downloading the file karate_club_network.txt from http://www.ludowaltman.nl/slm/karate_club_network.txt, running the command `java -jar ModularityOptimizer.jar karate_club_network.txt karate_club_communities.txt 1 1.0 3 10 10 0 0`, and verifying that the output file karate_club_communities.txt in your directory matches the one found at http://www.ludowaltman.nl/slm/karate_club_communities.txt; see http://www.ludowaltman.nl/slm/ for more information about ModularityOptimizer.jar.
+3. Execute the terminal command `./benchmark -f flags.dat` followed by the terminal command `rm network.dat community.dat statistics.dat` inside the binary_networks directory in order manually to run the program once
+4. Unzip clustering_programs.tar.gz
+5. Execute the terminal command `./compile.sh` inside the clustering_programs_5_2 directory. Note that this will work from a Unix terminal, and that to run the program on Windows you can install MinGW from http://www.mingw.org/ (I haven't tried to install the program on Windows)
+6. Unzip mutual3.tar.gz
+7. Execute the terminal command `make` inside the mutual3 directory
+8. Unzip gmap.zip
+9. Execute the terminal command `make` inside the gmap/external/eba directory. Note that only this subset of the entire gmap program needs to be installed.
+10. Additionally, you can test whether or not ModularityOptimizer.jar works with your installed version of Java by downloading the file karate_club_network.txt from http://www.ludowaltman.nl/slm/karate_club_network.txt, running the command `java -jar ModularityOptimizer.jar karate_club_network.txt karate_club_communities.txt 1 1.0 3 10 10 0 0`, and verifying that the output file karate_club_communities.txt in your directory matches the one found at http://www.ludowaltman.nl/slm/karate_club_communities.txt; see http://www.ludowaltman.nl/slm/ for more information about ModularityOptimizer.jar.
 
 The above workflow details the specific steps required to install the external programs which this program calls. This program also requires Python 2.7 and the scientific programming libraries listed below in the Dependencies section. I recommend installing Anaconda (https://store.continuum.io/cshop/anaconda/), a Python distribution pre-configured with many, if not all, of the Python libraries this program uses.
 
