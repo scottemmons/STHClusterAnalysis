@@ -101,3 +101,5 @@ Notes
 =====
 
 Right now the combined.py code is set up to handle the random number seed correctly for 100 trials at the sizes N = 1000, 10000, 100000, and 1000000. If you want to run this experiment in a different way, look over how the random number seed is being handled and update the code accordingly to facilitate your workflow.
+
+"Blondel" appears in the code as another name for the Louvain algorithm, but it does not appear in the paper in order not to imply undue credit to Blondel over his collaborators.
